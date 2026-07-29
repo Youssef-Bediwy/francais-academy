@@ -4,18 +4,34 @@ import { startOfDayUtc } from '@/utils/date';
 
 export const gamificationRepository = {
   allBadges() {
-    return prisma.badge.findMany({ orderBy: [{ criteria: 'asc' }, { threshold: 'asc' }] });
+    return prisma.badge.findMany({
+      orderBy: [{ criteria: 'asc' }, { threshold: 'asc' }],
+    });
   },
 
   achievementsForUser(userId: string) {
-    return prisma.achievement.findMany({ where: { userId }, include: { badge: true } });
+    return prisma.achievement.findMany({
+      where: { userId },
+      include: { badge: true },
+    });
   },
 
   unlockBadge(userId: string, badgeId: string, progress: number) {
     return prisma.achievement.upsert({
-      where: { userId_badgeId: { userId, badgeId } },
-      create: { userId, badgeId, progress },
-      update: { progress },
+      where: {
+        userId_badgeId: {
+          userId,
+          badgeId,
+        },
+      },
+      create: {
+        userId,
+        badgeId,
+        progress,
+      },
+      update: {
+        progress,
+      },
     });
   },
 
@@ -28,20 +44,41 @@ export const gamificationRepository = {
   },
 
   statistics(userId: string) {
-    return prisma.userStatistics.findUnique({ where: { userId } });
-  },
-
-  upsertStatistics(userId: string, data: Prisma.UserStatisticsUncheckedUpdateInput) {
-    return prisma.userStatistics.upsert({
+    return prisma.userStatistics.findUnique({
       where: { userId },
-      create: { userId, ...(data as Prisma.UserStatisticsUncheckedCreateInput) },
-      update: data,
     });
   },
 
+upsertStatistics(
+  userId: string,
+  data: Prisma.UserStatisticsUncheckedUpdateInput,
+) {
+  // On retire userId proprement
+  const { userId: _ignored, ...rest } = data;
+
+  // On force le type pour garantir que userId n'est plus présent
+  const safeData: Omit<Prisma.UserStatisticsUncheckedCreateInput, 'userId'> =
+    rest as Omit<Prisma.UserStatisticsUncheckedCreateInput, 'userId'>;
+
+  return prisma.userStatistics.upsert({
+    where: { userId },
+    create: {
+      ...safeData,
+      userId,
+    },
+    update: safeData as Prisma.UserStatisticsUncheckedUpdateInput,
+  });
+},
+
+
   goalForDate(userId: string, date: Date) {
     return prisma.dailyGoal.findUnique({
-      where: { userId_date: { userId, date: startOfDayUtc(date) } },
+      where: {
+        userId_date: {
+          userId,
+          date: startOfDayUtc(date),
+        },
+      },
     });
   },
 
@@ -52,7 +89,12 @@ export const gamificationRepository = {
     update: Prisma.DailyGoalUncheckedUpdateInput,
   ) {
     return prisma.dailyGoal.upsert({
-      where: { userId_date: { userId, date: startOfDayUtc(date) } },
+      where: {
+        userId_date: {
+          userId,
+          date: startOfDayUtc(date),
+        },
+      },
       create,
       update,
     });
@@ -60,8 +102,16 @@ export const gamificationRepository = {
 
   goalsRange(userId: string, from: Date, to: Date) {
     return prisma.dailyGoal.findMany({
-      where: { userId, date: { gte: startOfDayUtc(from), lte: startOfDayUtc(to) } },
-      orderBy: { date: 'asc' },
+      where: {
+        userId,
+        date: {
+          gte: startOfDayUtc(from),
+          lte: startOfDayUtc(to),
+        },
+      },
+      orderBy: {
+        date: 'asc',
+      },
     });
   },
 };
