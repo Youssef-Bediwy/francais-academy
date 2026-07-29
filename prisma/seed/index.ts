@@ -1,5 +1,3 @@
-index.ts 
-
 /* eslint-disable no-console */
 import { PrismaClient, type CefrLevel, type ExerciseType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
