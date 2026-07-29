@@ -42,6 +42,8 @@ ENV HOSTNAME=0.0.0.0
 
 # ❌ SUPPRIMÉ : ENV PORT=3000 (Railway fournit PORT automatiquement)
 
+COPY --from=builder /app/.next/server ./server
+
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
