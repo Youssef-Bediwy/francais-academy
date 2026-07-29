@@ -6,6 +6,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
@@ -15,23 +16,23 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["./src/*"],
       "@tests/*": ["./tests/*"]
-    },
-
-    "ignoreDeprecations": "6.0"
+    }
   },
-
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
   ],
-
   "exclude": ["node_modules"]
 }
-
