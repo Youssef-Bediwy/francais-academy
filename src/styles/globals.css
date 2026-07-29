@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --surface: 255 255 255;
+    --surface-muted: 248 247 245;
+    --border: 221 217 210;
+    --foreground: 28 26 23;
+    --foreground-muted: 125 117 104;
+  }
+
+  [data-theme='dark'] {
+    --surface: 24 22 20;
+    --surface-muted: 32 29 26;
+    --border: 62 57 51;
+    --foreground: 248 247 245;
+    --foreground-muted: 165 157 147;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-surface-muted text-foreground font-sans;
+  }
+
+  html[dir='rtl'] body {
+    @apply font-arabic;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display font-semibold tracking-tight text-balance;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-surface;
+  }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[100]
+           focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-white;
+  }
+
+  .prose-lesson {
+    @apply text-[1.0625rem] leading-8 text-foreground/90;
+  }
+
+  .prose-lesson p + p {
+    @apply mt-4;
+  }
+
+  .card-hover {
+    @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-lift;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .rtl-flip {
+    @apply rtl:-scale-x-100;
+  }
+
+  .grid-auto-cards {
+    @apply grid gap-5 sm:grid-cols-2 lg:grid-cols-3;
+  }
+}

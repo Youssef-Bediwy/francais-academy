@@ -1,0 +1,10 @@
+node_modules
+.next
+coverage
+.git
+.env
+.env.local
+Dockerfile*
+docker-compose*
+README.md
+tests

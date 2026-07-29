@@ -1,0 +1,481 @@
+// Francais Academy - schema de donnees
+// Convention : tous les contenus pedagogiques sont bilingues (suffixes Fr / Ar).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------- enums
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Locale {
+  FR
+  AR
+}
+
+enum CefrLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum CourseSkill {
+  GRAMMAR
+  CONJUGATION
+  SPELLING
+  VOCABULARY
+  PRONUNCIATION
+  LISTENING
+  READING
+  EXPRESSIONS
+  CULTURE
+  EXAM_PREP
+}
+
+enum ExerciseType {
+  MCQ
+  FLASHCARD
+  FILL_BLANK
+  MATCHING
+  WORD_ORDER
+  TRUE_FALSE
+  SENTENCE_COMPLETION
+  LISTENING
+  PRONUNCIATION
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum FavoriteType {
+  COURSE
+  LESSON
+  FLASHCARD
+}
+
+enum BadgeTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum BadgeCriteria {
+  XP_TOTAL
+  STREAK_DAYS
+  LESSONS_COMPLETED
+  COURSES_COMPLETED
+  EXERCISES_PASSED
+  FLASHCARDS_REVIEWED
+  PERFECT_SCORES
+}
+
+enum ReviewGrade {
+  AGAIN
+  HARD
+  GOOD
+  EASY
+}
+
+// ---------------------------------------------------------------- utilisateurs
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  passwordHash  String
+  role          Role     @default(USER)
+  locale        Locale   @default(FR)
+  level         CefrLevel @default(A1)
+  avatarUrl     String?
+  xp            Int      @default(0)
+  streakCurrent Int      @default(0)
+  streakLongest Int      @default(0)
+  lastActiveOn  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  progress    Progress[]
+  results     ExerciseResult[]
+  revisions   RevisionSession[]
+  favorites   Favorite[]
+  achievements Achievement[]
+  dailyGoals  DailyGoal[]
+  statistics  UserStatistics?
+
+  @@index([role])
+  @@index([xp])
+}
+
+model UserStatistics {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  totalXp             Int      @default(0)
+  totalTimeSeconds    Int      @default(0)
+  coursesCompleted    Int      @default(0)
+  lessonsCompleted    Int      @default(0)
+  exercisesPassed     Int      @default(0)
+  exercisesAttempted  Int      @default(0)
+  flashcardsReviewed  Int      @default(0)
+  perfectScores       Int      @default(0)
+  accuracy            Float    @default(0)
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------- contenu
+
+model Category {
+  id            String      @id @default(cuid())
+  slug          String      @unique
+  skill         CourseSkill @unique
+  nameFr        String
+  nameAr        String
+  descriptionFr String
+  descriptionAr String
+  icon          String
+  color         String
+  position      Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  courses    Course[]
+  flashcards Flashcard[]
+
+  @@index([position])
+}
+
+model Course {
+  id               String    @id @default(cuid())
+  slug             String    @unique
+  categoryId       String
+  titleFr          String
+  titleAr          String
+  descriptionFr    String
+  descriptionAr    String
+  level            CefrLevel
+  estimatedMinutes Int       @default(60)
+  coverImage       String?
+  position         Int       @default(0)
+  isPublished      Boolean   @default(true)
+  learnerCount     Int       @default(0)
+  rating           Float     @default(4.7)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  category   Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  lessons    Lesson[]
+  vocabulary Vocabulary[]
+  progress   Progress[]
+  favorites  Favorite[]
+
+  @@index([categoryId, level])
+  @@index([level, isPublished])
+  @@index([learnerCount])
+}
+
+model Lesson {
+  id               String   @id @default(cuid())
+  slug             String
+  courseId         String
+  titleFr          String
+  titleAr          String
+  summaryFr        String
+  summaryAr        String
+  contentFr        String   @db.Text
+  contentAr        String   @db.Text
+  explanationFr    String   @db.Text
+  explanationAr    String   @db.Text
+  examples         Json     @default("[]")
+  illustrationUrl  String?
+  audioUrl         String?
+  position         Int      @default(0)
+  estimatedMinutes Int      @default(12)
+  xpReward         Int      @default(20)
+  isPublished      Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  course     Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  exercises  Exercise[]
+  vocabulary Vocabulary[]
+  progress   Progress[]
+  favorites  Favorite[]
+
+  @@unique([courseId, slug])
+  @@index([courseId, position])
+}
+
+model Vocabulary {
+  id          String    @id @default(cuid())
+  wordFr      String
+  translationAr String
+  phonetic    String?
+  gender      String?
+  partOfSpeech String?
+  exampleFr   String
+  exampleAr   String
+  audioUrl    String?
+  level       CefrLevel @default(A1)
+  courseId    String?
+  lessonId    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  course     Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lesson     Lesson?     @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  flashcards Flashcard[]
+
+  @@index([lessonId])
+  @@index([level])
+  @@index([wordFr])
+}
+
+// ---------------------------------------------------------------- exercices
+
+model Exercise {
+  id             String       @id @default(cuid())
+  lessonId       String
+  type           ExerciseType
+  titleFr        String
+  titleAr        String
+  instructionsFr String
+  instructionsAr String
+  position       Int          @default(0)
+  points         Int          @default(10)
+  passingScore   Int          @default(70)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  lesson    Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  questions Question[]
+  results   ExerciseResult[]
+
+  @@index([lessonId, position])
+  @@index([type])
+}
+
+model Question {
+  id            String   @id @default(cuid())
+  exerciseId    String
+  promptFr      String   @db.Text
+  promptAr      String   @db.Text
+  hintFr        String?
+  hintAr        String?
+  explanationFr String   @db.Text
+  explanationAr String   @db.Text
+  audioUrl      String?
+  imageUrl      String?
+  position      Int      @default(0)
+  points        Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  answers  Answer[]
+
+  @@index([exerciseId, position])
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  questionId String
+  textFr     String
+  textAr     String?
+  isCorrect  Boolean  @default(false)
+  // MATCHING : cle de rapprochement / WORD_ORDER : rang attendu
+  matchKey   String?
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, position])
+}
+
+model ExerciseResult {
+  id              String   @id @default(cuid())
+  userId          String
+  exerciseId      String
+  score           Int
+  maxScore        Int
+  correctCount    Int
+  totalCount      Int
+  percentage      Int
+  passed          Boolean  @default(false)
+  durationSeconds Int      @default(0)
+  xpEarned        Int      @default(0)
+  // detail par question : [{ questionId, correct, given }]
+  details         Json     @default("[]")
+  createdAt       DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([exerciseId])
+}
+
+// ---------------------------------------------------------------- revision espacee
+
+model Flashcard {
+  id           String    @id @default(cuid())
+  vocabularyId String?
+  categoryId   String?
+  frontFr      String
+  backAr       String
+  hintFr       String?
+  audioUrl     String?
+  level        CefrLevel @default(A1)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  vocabulary Vocabulary?       @relation(fields: [vocabularyId], references: [id], onDelete: SetNull)
+  category   Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  revisions  RevisionSession[]
+  favorites  Favorite[]
+
+  @@index([level])
+  @@index([categoryId])
+}
+
+// Etat SM-2 d'une carte pour un utilisateur (une ligne par couple user/carte).
+model RevisionSession {
+  id             String       @id @default(cuid())
+  userId         String
+  flashcardId    String
+  easeFactor     Float        @default(2.5)
+  intervalDays   Int          @default(0)
+  repetitions    Int          @default(0)
+  lapses         Int          @default(0)
+  dueAt          DateTime     @default(now())
+  lastGrade      ReviewGrade?
+  lastReviewedAt DateTime?
+  reviewCount    Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcard Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, flashcardId])
+  @@index([userId, dueAt])
+}
+
+// ---------------------------------------------------------------- progression
+
+// Une ligne de progression cible SOIT un cours (courseId) SOIT une lecon (lessonId),
+// jamais les deux : les contraintes uniques partielles de Postgres reposent sur ce choix.
+model Progress {
+  id               String         @id @default(cuid())
+  userId           String
+  courseId         String?
+  lessonId         String?
+  status           ProgressStatus @default(NOT_STARTED)
+  percentage       Int            @default(0)
+  timeSpentSeconds Int            @default(0)
+  lastViewedAt     DateTime       @default(now())
+  completedAt      DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@unique([userId, lessonId])
+  @@index([userId, status])
+}
+
+model Favorite {
+  id          String       @id @default(cuid())
+  userId      String
+  type        FavoriteType
+  courseId    String?
+  lessonId    String?
+  flashcardId String?
+  createdAt   DateTime     @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course?    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson    Lesson?    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  flashcard Flashcard? @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@unique([userId, lessonId])
+  @@unique([userId, flashcardId])
+  @@index([userId, type])
+}
+
+// ---------------------------------------------------------------- gamification
+
+model Badge {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  nameFr        String
+  nameAr        String
+  descriptionFr String
+  descriptionAr String
+  icon          String
+  tier          BadgeTier     @default(BRONZE)
+  criteria      BadgeCriteria
+  threshold     Int
+  xpReward      Int           @default(50)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  achievements Achievement[]
+
+  @@index([criteria, threshold])
+}
+
+model Achievement {
+  id         String   @id @default(cuid())
+  userId     String
+  badgeId    String
+  progress   Int      @default(0)
+  unlockedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId, unlockedAt])
+}
+
+model DailyGoal {
+  id              String   @id @default(cuid())
+  userId          String
+  date            DateTime @db.Date
+  targetXp        Int      @default(50)
+  achievedXp      Int      @default(0)
+  targetLessons   Int      @default(1)
+  achievedLessons Int      @default(0)
+  targetMinutes   Int      @default(15)
+  achievedMinutes Int      @default(0)
+  completed       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
