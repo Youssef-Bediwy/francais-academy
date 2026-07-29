@@ -15,15 +15,23 @@ FROM node:20-alpine AS builder
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
+# Copier node_modules depuis deps
 COPY --from=deps /app/node_modules ./node_modules
 
-# IMPORTANT : recopier prisma AVANT COPY . .
+# IMPORTANT : recopier prisma AVANT COPY .
 COPY prisma ./prisma
 
+# Copier le reste du projet
 COPY . .
 
-# Fake DATABASE_URL required by Prisma at build time
+# Fake DATABASE_URL requis pour prisma generate
 ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/build"
+
+# IMPORTANT : forcer la copie des dossiers internes Prisma
+# (Railway les ignore parfois dans deps)
+COPY --from=deps /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
 
 RUN npx prisma generate
 RUN npm run build
@@ -38,21 +46,18 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Create user
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
-# Copy standalone output
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma schema + client
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# Entrypoint
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
