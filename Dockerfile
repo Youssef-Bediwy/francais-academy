@@ -16,6 +16,10 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
+
+# IMPORTANT : recopier prisma AVANT COPY . .
+COPY prisma ./prisma
+
 COPY . .
 
 # Fake DATABASE_URL required by Prisma at build time
