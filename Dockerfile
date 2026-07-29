@@ -22,7 +22,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/build"
+
+# ❌ SUPPRIMÉ : ne jamais mettre DATABASE_URL ici
+# ❌ SUPPRIMÉ : ne jamais mettre PORT ici
 
 RUN npx prisma generate
 RUN npm run build
@@ -36,8 +38,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+
+# ❌ SUPPRIMÉ : ENV PORT=3000 (Railway fournit PORT automatiquement)
 
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
@@ -52,8 +55,6 @@ COPY --from=builder \
   --chown=nextjs:nodejs \
   /app/.next/static ./.next/static
 
-# Important : conserve toute l'installation npm,
-# notamment node_modules/.bin/prisma et ses dépendances.
 COPY --from=deps \
   --chown=nextjs:nodejs \
   /app/node_modules ./node_modules
@@ -63,7 +64,6 @@ COPY --from=builder \
   /app/prisma ./prisma
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 USER nextjs
